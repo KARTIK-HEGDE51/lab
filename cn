@@ -1,564 +1,390 @@
-// 1.
-class Q {
-    int n;
-    boolean valueset = false;
-
-    synchronized int get() {
-        while (!valueset)
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                System.out.println("Thread Interrupted");
-            }
-        System.out.println("Got :" + n);
-        valueset = false;
-        notify();
-        return n;
-    }
-
-    synchronized void put(int n) {
-        while (valueset)
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                System.out.println("Thread interrupted");
-            }
-        this.n = n;
-        valueset = true;
-        System.out.println("put " + n);
-        notify();
-    }
-}
-
-class Producer implements Runnable {
-    Q q;
-
-    Producer(Q q) {
-        this.q = q;
-        new Thread(this, "Producer").start();
-    }
-
-    public void run() {
-        int i = 0;
-        while (true) {
-            q.put(i++);
-        }
-    }
-}
-
-class Consumer implements Runnable {
-    Q q;
-
-    Consumer(Q q) {
-        this.q = q;
-        new Thread(this, "Consumer").start();
-    }
-
-    public void run() {
-        int i = 0;
-        while (true) {
-            q.get();
-        }
-    }
-}
-
-class Demo {
-    public static void main(String args[]) {
-        Q q = new Q();
-        new Producer(q);
-        new Consumer(q);
-        System.out.println("press ctrl+c to exit");
-    }
-}
-
-//*********************************************************     2.
-import java.awt.Color;
-import java.awt.Graphics;
-
-import javax.swing.*;
-
-/*
-<applet code="JTabbedPaneDemo" width=400 height=100>
-</applet>
-*/
-public class JTabbedPaneDemo extends JApplet {
-    public void init() {
-        try {
-            SwingUtilities.invokeAndWait(
-                    new Runnable() {
-                        public void run() {
-                            makeGUI();
-                        }
-                    }
-            );
-        } catch (Exception exc) {
-            System.out.println("Can't create because of " +exc);
-        }
-    }
-
-    private void makeGUI() {
-    	
-        JTabbedPane jtp = new JTabbedPane();
-        jtp.addTab("Semister", new SemisterPanel());
-        jtp.addTab("Course", new CoursePanel());
-        jtp.addTab("Elective", new ElectivePanel());
-        add(jtp);
-    
-    }
-}
-
-// Make the panels that will be added to the tabbed pane.
-class SemisterPanel extends JPanel {
-    public SemisterPanel() {
-        JButton b1 = new JButton("2");
-        add(b1);
-        JButton b2 = new JButton("4");
-        add(b2);
-        JButton b3 = new JButton("6");
-        add(b3);
-        JButton b4 = new JButton("8");
-        add(b4);
-        
-}
-}
-
-
-
-class CoursePanel extends JPanel {
-    public CoursePanel() {
-        JCheckBox cb1 = new JCheckBox("EC");
-        add(cb1);
-        JCheckBox cb2 = new JCheckBox("ISE");
-        add(cb2);
-        JCheckBox cb3 = new JCheckBox("CSE");
-        add(cb3);
-    }
-}
-class ElectivePanel extends JPanel {
-    public ElectivePanel() {
-        JComboBox jcb = new JComboBox();
-        jcb.addItem("AI");
-        jcb.addItem("IoT");
-        jcb.addItem("Big Data");
-        add(jcb);
-    }
-
-
-}
-
-// ********************************************** 3.
-AddServerIntf.java
-
-import java.rmi.*;
-public interface AddServerIntf extends Remote {
-    int add(int x, int y) throws RemoteException;
-}
-
-AddServerImpl.java
-
-import java.rmi.*;
-import java.rmi.server.*;
-public class AddServerImpl extends UnicastRemoteObject implements AddServerIntf{
-    public AddServerImpl() throws RemoteException {}
-    public int add(int x, int y) throws RemoteException {
-        return x+y;
-    }
-}
-
-AddServer.java
-
-import java.rmi.*;
-public class AddServer {
-    public static void main(String[] args) {
-        try{
-            AddServerImpl server = new AddServerImpl();
-            Naming.rebind("registerme",server);
-            System.out.println("Server is running...");
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-    }
-}
-
-
-AddClient.java
-import java.rmi.*;
-public class AddClient {
-    public static void main(String[] args) {
-        try{
-            AddServerIntf client = (AddServerIntf)Naming.lookup("registerme");
-            System.out.println("First number is :" + args[0]);
-            int x = Integer.parseInt(args[0]);
-            System.out.println("Second number is :" + args[1]);
-            int y = Integer.parseInt(args[1]);
-            System.out.println("Sum =" + client.add(x,y));
-        } catch (Exception e){
-            System.out.println(e);
-        }
-    }
-}
-
-//************************************************************************ 4.
-Client.java
-import java.net.*;
-import java.io.*;
-public class Client {
-    public static void main(String[] args) {
-        Socket client = null;
-        BufferedReader br = null;
-        try {
-            System.out.println(args[0] + " " + args[1]);
-            client = new Socket(args[0],Integer.parseInt(args[1]));
-        } catch (Exception e){}
-        DataInputStream input = null;
-        PrintStream output = null;
-        try {
-            input = new DataInputStream(client.getInputStream());
-            output = new PrintStream(client.getOutputStream());
-            br = new BufferedReader(new InputStreamReader(System.in));
-            String str = input.readLine();  //get the prompt from the server
-            System.out.println(str);
-            String filename = br.readLine();
-            if (filename!=null){
-                output.println(filename);
-            }
-            String data;
-            while ((data=input.readLine())!=null) {
-                System.out.println(data);
-            }
-            client.close();
-        } catch (Exception e){
-            System.out.println(e);
-        }
-    }
-}
-
-
-
-
-Server.java
-import java.net.*;
-import java.io.*;
-
-
-public class Server {
-    public static void main(String[] args) {
-        ServerSocket server = null;
-        try {
-            server = new ServerSocket(Integer.parseInt(args[0]));
-        } catch (Exception e) {
-        }
-        while (true) {
-            Socket client = null;
-            PrintStream output = null;
-            DataInputStream input = null;
-            try {
-                client = server.accept();
-            } catch (Exception e) {
-                System.out.println(e);
-            }
-            try {
-                output = new PrintStream(client.getOutputStream());
-                input = new DataInputStream(client.getInputStream());
-            } catch (Exception e) {
-                System.out.println(e);
-            }
-            //Send the command prompt to client
-            output.println("Enter the filename :>");
-            try {
-                //get the filename from client
-                String filename = input.readLine();
-                System.out.println("Client requested file :" + filename);
-                try {
-                    File f = new File(filename);
-                    BufferedReader br = new BufferedReader(new FileReader(f));
-                    String data;
-                    while ((data = br.readLine()) != null) {
-                        output.println(data);
-                    }
-                } catch (FileNotFoundException e) {
-                    output.println("File not found");
-                }
-                client.close();
-            } catch (Exception e) {
-                System.out.println(e);
-            }
-        }
-    }
-}
-
-// ********************************************************************************** 5.
-import java.sql.*;
-class prg{
-public static void main(String args[]){
-
-try{
-
-Class.forName("oracle.jdbc.driver.OracleDriver");
-
-Connection con=DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe","javanetwork","tiger");
-
-Statement stmt=con.createStatement();
-String sql1=("insert into Books values(12,'Java Programming','Herbert',9,'TMH')");
-String sql2=("update Books set edition=9 where Bid=1432");
-String sql3=("Delete from Books where Bid=12345");
-String sql=("select * from Books");
-ResultSet rs2=stmt.executeQuery(sql1);
-ResultSet rs3=stmt.executeQuery(sql2);
-ResultSet rs4=stmt.executeQuery(sql3);
-ResultSet rs=stmt.executeQuery(sql);
-
-
-while(rs.next())
-{
-System.out.println(rs.getInt(1)+ " " +rs.getString(2)+" "+rs.getString(3)+" "+rs.getInt(4)+" "+rs.getString(5) );
-
-}
-con.close();
-
-}catch(Exception e)
-{
-
-System.out.println(e);
-}
-}
-}
-
-********************************************************** CNIP ***************************************************
-// 1.
-
-set ns [ new Simulator ]
-set tf [ open lab1.tr w ]
-$ns trace-all $tf
-set nf [ open lab1.nam w ]
-$ns namtrace-all $nf
-# The below code is used to create the nodes.
-set n0 [$ns node]
-set n1 [$ns node]
-set n2 [$ns node]
-#This is used to give color to the flow of packets.
-$ns color 1 "red"
-$ns color 2 "blue"
-$n0 label "Source/udp0"
-$n1 label "Source/udp1"
-$n2 label "destination"
-#providing the link
-$ns duplex-link $n0 $n2 10kb 100ms DropTail
-$ns duplex-link $n1 $n2 10kb 10ms DropTail
-# set the queue size b/w the nodes
-$ns set queue-limit $n0 $n2  5
-$ns set queue-limit $n1 $n2  5
-set udp0   [new Agent/UDP]
-set udp1  [new Agent/UDP]
-$ns attach-agent $n0 $udp0
-$ns attach-agent $n1 $udp1
-set cbr0  [new Application/Traffic/CBR]
-set cbr1 [new Application/Traffic/CBR]
-$cbr0 attach-agent $udp0
-$cbr1 attach-agent $udp1
-set null0  [new Agent/Null]
-$ns attach-agent $n2 $null0
-#The below code sets the udp0 packets to red and udp1 packets to blue color
-$udp0 set class_  1
-$udp1 set class_  2
-#The below code is used to connect the agents.
-$ns connect $udp0 $null0
-$ns connect $udp1 $null0
-#The below code is used to set the packet size to 500
-$cbr0 set packetSize_  500Mb
-$cbr1 set packetSize_  500Mb
-#The below code is used to set the interval of the packets,
-$cbr0 set interval_ 0.01
-$cbr1 set interval_ 0.01
-proc finish  { }  {
-global  ns n f  tf
-$ns flush-trace
-exec nam lab1.nam &
-close $tf
-close $nf
-exit 0
-}
-$ns at 0.1 "$cbr0 start"
-$ns at 0.1 "$cbr1 start"
-$ns at 9.5 "$cbr0 stop"
-$ns at 10.0 "$cbr1 stop"
-$ns at 10.0 "finish"
-$ns run
-
-AWK Script (lab1.awk)
-
-BEGIN{
-count=0; 
-} 
-{ 
-if($1=="d")
-count++ ;
-} 
-END{
-printf("The Total no of Packets Dropped due to Congestion : %d\n\n", count) 
-} 
-
-*************************************************************************** 2.
-set ns  [new Simulator]
-set  tf  [open lan.tr w]
-$ns trace-all $tf
-set nf  [open lan.nam w]
-$ns namtrace-all $nf
-set n0  [$ns node]
-set n1  [$ns node]
-set n2  [$ns node]
-set n3  [$ns node]
-set n4  [$ns node]
-set n5  [$ns node]
-$ns color 1 "blue"
-$n1 label  “Source"
-$n2  label  "Error node"
-$n5  label  "Destination"
-
-#The below code is used to create two Lans (Lan1 and Lan2).
-$ns make-lan "$n0 $n1 $n2" 10Mb 10ms LL Queue/DropTail  Mac/802_3
-$ns make-lan "$n3 $n4 $n5" 10Mb 10ms LL Queue/DropTail  Mac/802_3
-
-# connect node n2 and n4
-$ns duplex-link $n2 $n4 100Mb 10ms DropTail
-$ns duplex-link-op $n2 $n4 color "green"
-set udp1 [new Agent/UDP]
-$ns attach-agent $n1 $udp1
-set cbr1 [new Application/Traffic/CBR]
-$cbr1 attach-agent $udp1
-set null5 [new Agent/Null]
-$ns attach-agent $n5 $null5
-$ns connect $udp1 $null5
-
-#data rate- change this to change the data rate
-$cbr1 set packetSize_  1000
-$cbr1 set interval_  0.001
-$udp1 set class_  1
-
-# The below code is used to add an error model between the nodes n2 and n4.
-set err  [new ErrorModel]
-$ns lossmodel $err $n2 $n4
-$err set rate_   0.1
-proc finish {}  {
-	global ns tf nf
-	$ns flush-trace
-	exec nam lan.nam&
-	close $tf
-	close $nf
-	exit 0
-}
-$ns at 0.1 "$cbr1 start"
-$ns at 6.0 "finish"
-$ns run
-
-
-AWK Script (lan.awk)
-BEGIN{
-	pkt=0;
-	time=0;
-}
-{
-	if($1=="r"&& $9=="1.0" && $10=="5.0")
-	{
-		pkt=pkt+$6;
-		time=$2;	
-	}
-}
-END{
-	printf("Throughput: %f Mbps \n\n",(pkt/time)*(8/1000000));
-}
-
-************************************************************************************88 3.
-set ns [new Simulator] 
-set  tf  [open lab3.tr w] 
-$ns trace-all $tf
-set nf  [open lab3.nam w] 
-$ns namtrace-all $nf
-set  n0  [$ns node] 
-set  n1  [$ns node] 
-set  n2  [$ns node] 
-set  n3  [$ns node] 
-
-# The below code is used to set the color and name's to the nodes. 
-$ns color 1 "red" 
-$ns color 2 "blue" 
-$n0 label "Source/TCP" 
-$n1 label "Source/UDP" 
-$n2 label "Router" 
-$n3 label "Destination" 
-$ns duplex-link$n0 $n2 100Mb 1ms DropTail
-$nsduplex-link $n1 $n2 100Mb 1ms DropTail
-$ns duplex-link $n2 $n3 100Mb 1ms DropTail
-
-# The below code is used to set the color and labels to the links. 
-$ns duplex-link-op $n0 $n2 color "green" 
-$ns duplex-link-op  $n0 $n2 label "from 0-2" 
-$ns duplex-link-op  $n1 $n2 color "green" 
-$ns duplex-link-op  $n1 $n2 label "from 1-2" 
-$ns duplex-link-op  $n2 $n3 color "green" 
-$ns duplex-link-op  $n2 $n3 label "from 2-3" 
-
-# The below code is used create TCP and UDP agents and the 
-# traffic ftp &cbr respectively. 
-
-set  tcp0 [new Agent/TCP] 
-$ns attach-agent $n0 $tcp0 
-set ftp0 [new Application/FTP] 
-$ftp0 attach-agent $tcp0  
-set sink3 [new Agent/TCPSink] 
-$ns attach-agent $n3 $sink3 
-set udp1 [new Agent/UDP] 
-$ns attach-agent $n1 $udp1 
-set cbr1 [new Application/Traffic/CBR]
-$cbr1 attach-agent $udp1 
-set null3 [new Agent/Null] 
-$ns attach-agent $n3 $null3 
-
-#The below code is used to set the packet size of ftp and udp. 
-$ftp0 set  packetSize_  500
-$ftp0 set  interval_  0.001
-
-#The below code is used set the data rate
-$cbr1 set  packetSize_  500 
-$cbr1 set  interval_  0.001
-
-#This code is used give a color red->tcp and blue ->udp. 
-$tcp0 set class_  1
-$udp1 set class_  2
-
-# The below code is used connect the agents. 
-$ns connect $tcp0 $sink3 
-$ns connect $udp1 $null3 
-
-proc finish { } { 
-global ns nf tf
-$ns flush-trace 
-exec nam lab3.nam &
-close $nf
-close $tf
-exit 0 
-} 
-$ns at 0.1 "$cbr1 start" 
-$ns at 0.2 "$ftp0 start" 
-$ns at 9.5 “$cbr1 stop"
-$ns at 9.5 “$ ftp0 stop"
-$ns at 10.0 "finish"
-$ns run
-
-AWK Script (lab3.awk)
-
-
-BEGIN{
-tcp=0; 
-udp=0; 
-} 
-{ 
-if($1=="r"&&$3=="2"&&$4=="3"&& $5=="tcp") 
-tcp++; 
-if($1=="r"&&$3=="2"&&$4=="3"&&$5=="cbr") 
-udp++; 
-} 
-END{
-printf("\n Total number of packets sent by TCP : %d\n",tcp); 
-printf("\n Total number of packets sent by UDP : %d\n",udp); 
-} 
+create table actor(
+act_id number(3) primary key,
+act_name varchar(50),
+act_gender char
+);
+create table director(
+dir_id number(3) primary key,
+dir_name varchar(50),
+dir_phone number(10)
+);
+create table movies(
+mov_id number(3) primary key,
+mov_title varchar(40),
+mov_year number(4),
+mov_lang varchar(10),
+dir_id number(3),
+foreign key (dir_id) references director(dir_id)
+);
+
+create table movie_cast(
+act_id number(3),
+mov_id number(3),
+role varchar(15),
+foreign key (act_id) references actor (act_id),
+foreign key (mov_id) references movies (mov_id)
+);
+create table rating(
+mov_id number(3),
+rev_stars float,
+foreign key (mov_id) references movies(mov_id)
+);
+INSERT INTO actor VALUES (301,'ANUSHKA','F');
+INSERT INTO actor VALUES (302,'PRABHAS','M');
+INSERT INTO actor VALUES (303,'JAMES','M');
+INSERT INTO actor VALUES (304,'SMITH','M');
+SELECT * FROM actor;
+
+INSERT INTO director VALUES (60,'RAJAMOULI', 8751611001); 
+INSERT INTO director VALUES (61,'HITCHCOCK', 7766138911); 
+INSERT INTO director VALUES (62,'FARAN', 9986776531);
+INSERT INTO director VALUES (63,'STEVEN SPIELBERG', 8989776530); 
+SELECT * FROM director;
+
+INSERT INTO movies VALUES (101,'BAHUBALI-2', 2017, 'TELUGU', 60);
+INSERT INTO movies VALUES (102,'BAHUBALI-1', 2015, 'TELUGU', 60);
+INSERT INTO movies VALUES (103,'VERTIGO', 1954, 'ENGLISH', 61);
+INSERT INTO movies VALUES (104,'MEN IN BLACK', 2011, 'ENGLISH', 63);
+SELECT * FROM movies;
+
+INSERT INTO movie_cast VALUES (301, 102, 'HEROINE');
+INSERT INTO movie_cast VALUES (301, 101, 'HEROINE');
+INSERT INTO movie_cast VALUES (302, 102, 'HERO');
+INSERT INTO movie_cast VALUES (303, 103, 'GUEST');
+INSERT INTO movie_cast VALUES (304, 104, 'HERO');
+SELECT * FROM movie_cast;
+
+INSERT INTO rating VALUES (101, 4);
+INSERT INTO rating VALUES (102, 2);
+INSERT INTO rating VALUES (103, 5);
+INSERT INTO rating VALUES (104, 4);
+DATABASE MANAGEMENT SYSTEM LAB PROGRAMS 4
+SELECT * FROM rating;
+
+1. List the titles of all movies directed by ‘Hitchcock’. 
+SELECT mov_title
+FROM movies
+WHERE dir_id IN (SELECT dir_id
+FROM director
+WHERE dir_name = 'HITCHCOCK');
+(OR)
+select m.mov_title
+from movies m, director d
+where m.dir_id = d.dir_id
+and d.dir_name = 'HITCHCOCK';
+
+2. Find the movie names where one or more actors acted in two or more movies. 
+SELECT mov_title
+FROM movies M, movie_cast MV
+WHERE M.mov_id=MV.mov_id AND act_id IN (SELECT act_id
+FROM movie_cast GROUP BY act_id
+HAVING COUNT (act_id)>1);
+(OR)
+select mov_title
+from movies
+where mov_id in (
+select mov_id
+from movie_cast
+where act_id in (
+select act_id
+from movie_cast
+group by act_id having count (act_id) > 1
+)
+);
+
+
+3. List all actors who acted in a movie before 2000 and also in a movie after 2015 (use JOIN operation). 
+SELECT act_name, mov_title, mov_year
+FROM actor A
+JOIN movie_cast C
+ON A.act_id=C.act_id
+JOIN movies M
+ON C.mov_id=M.mov_id
+WHERE M.mov_year NOT BETWEEN 2000 AND 2015;
+(OR)
+select act_name, mov_title, mov_year
+from actor
+join movie_cast using (act_id)
+join movies using (mov_id)
+where mov_year not between 2000 and 2015;
+
+
+4. Find the title of movies and number of stars for each movie that has at least one rating and find the highest 
+number of stars that movie received. Sort the result by movie title. 
+SELECT mov_title, MAX (rev_stars)
+FROM movies
+INNER JOIN rating USING (mov_id)
+GROUP BY mov_title
+HAVING MAX (rev_stars)>0
+ORDER BY mov_title;
+
+5. Update rating of all movies directed by ‘Steven Spielberg’ to 5
+UPDATE rating
+SET rev_stars=5
+WHERE mov_id IN (SELECT mov_id FROM movies
+WHERE dir_id IN (SELECT dir_id
+FROM director
+WHERE dir_name = 'STEVEN SPIELBERG'));
+1 row(s) updated.
+select * from rating;
+
+
+*************************************************************************************** end 1 *****************************************
+
+create table salesman(
+salesman_id number(4) primary key,
+name varchar(20),
+city varchar(20),
+commission varchar(5)
+);
+create table customer(
+customer_id number(4) primary key,
+cust_name varchar(20),
+city varchar(20),
+grade number(5),
+salesman_id number(4),
+foreign key (salesman_id) references salesman(salesman_id) on delete set null
+);
+create table orders(
+ord_no number(4),
+purchase_amt number(6,2),
+ord_date date,
+customer_id number(4),
+salesman_id number(4),
+DATABASE MANAGEMENT SYSTEM LAB PROGRAMS 8
+foreign key (salesman_id) references salesman(salesman_id) on delete cascade,
+foreign key (customer_id) references customer(customer_id) on delete cascade
+);
+INSERT INTO salesman VALUES (1000, 'JOHN','BANGALORE','25 %');
+INSERT INTO salesman VALUES (2000, 'RAVI','BANGALORE','20 %');
+INSERT INTO salesman VALUES (3000, 'KUMAR','MYSORE','15 %');
+INSERT INTO salesman VALUES (4000, 'SMITH','DELHI','30 %');
+INSERT INTO salesman VALUES (1234, 'HARSHA','HYDRABAD','15 %');
+SELECT * FROM salesman;
+
+INSERT INTO customer VALUES (10, 'PREETHI','BANGALORE', 100, 1000);
+INSERT INTO customer VALUES (11, 'VIVEK','MANGALORE', 300, 1000);
+INSERT INTO customer VALUES (12, 'BHASKAR','CHENNAI', 400, 2000);
+INSERT INTO customer VALUES (13, 'CHETHAN','BANGALORE', 200, 2000);
+INSERT INTO customer VALUES (14, 'MAMATHA','BANGALORE', 400, 3000);
+INSERT INTO customer VALUES (15, 'RAKSHA','BANGALORE', 500, 1234);
+SELECT * FROM customer;
+
+INSERT INTO orders VALUES (50, 5000, '04-MAY-17', 10, 1000);
+INSERT INTO orders VALUES (51, 450, '20-JAN-17', 10, 2000);
+INSERT INTO orders VALUES (52, 1000, '24-FEB-17', 13, 2000);
+INSERT INTO orders VALUES (53, 3500, '13-APR-17', 14, 3000);
+
+INSERT INTO orders VALUES (54, 550, '09-MAR-17', 12, 2000);
+INSERT INTO orders VALUES (55, 650, '19-MAR-17', 15, 1234);
+SELECT * FROM orders;
+
+1. Count the customers with grades above Bangalore’s average. 
+SELECT grade, COUNT (DISTINCT customer_id)
+FROM customer
+GROUP BY grade
+HAVING grade > (SELECT AVG(grade)
+FROM customer
+WHERE city='BANGALORE');
+
+2. Find the name and numbers of all salesmen who had more than one customer.
+SELECT salesman_id, name
+FROM salesman A
+WHERE 1 < (SELECT COUNT (*)
+FROM customer
+WHERE salesman_id=A.salesman_id);
+(OR)
+select salesman_id, name
+from salesman
+where salesman_id in (select salesman_id from customer group by salesman_id having count (*) > 1);
+
+3. List all the salesmen and indicate those who have and don’t have customers in their cities (Use UNION 
+operation.)
+SELECT SALESMAN.salesman_id, name, cust_name, commission
+FROM salesman, customer
+WHERE SALESMAN.city = CUSTOMER.city
+UNION
+SELECT salesman_id, name, 'NO MATCH', commission
+FROM salesman
+WHERE NOT city = ANY
+(SELECT city
+FROM customer)
+ORDER BY 2 DESC;
+(OR)
+select salesman.salesman_id, name, cust_name,commission
+from salesman, customer
+where salesman.city = customer.city
+UNION
+select salesman_id, name, 'No Match',commission
+from salesman
+where city not in (select city from customer)
+order by 2 desc;
+
+
+4. Create a view that finds the salesman who has the customer with the highest order of a day. 
+
+CREATE VIEW ELITSALESMAN AS
+SELECT B.ord_date, A.salesman_id, A.name
+FROM salesman A, orders B
+WHERE A.salesman_id = B.salesman_id
+AND B.purchase_amt=(SELECT MAX (purchase_amt)
+FROM orders C
+WHERE C.ord_date = B.ord_date);
+View created.
+select * from ELITSALESMAN;
+(OR)
+create view Highest_order as
+select ord_date, salesman_id, name
+from orders natural join salesman
+where (purchase_amt, ord_date) in (select max(purchase_amt), ord_date from orders 
+group by ord_date);
+View created.
+select * from Highest_order;
+
+5. Demonstrate the DELETE operation by removing salesman with id 12345. All his orders must also be deleted.
+DELETE FROM salesman
+WHERE salesman_id=1234;
+1 row(s) deleted.
+SELECT * FROM salesman;
+
+*********************************************************************************** End 2 *******************************************************
+
+create table student(
+USN varchar(10),
+sname varchar(50),
+address varchar(40),
+phone number(10),
+gender char,
+primary key(USN)
+);
+create table semsec(
+SSID varchar(5),
+sem number(1),
+sec char,
+primary key(SSID)
+);
+create table class(
+DATABASE MANAGEMENT SYSTEM LAB PROGRAMS 13
+USN varchar(10),
+SSID varchar(5),
+primary key(USN, SSID),
+foreign key (USN) references student(USN),
+foreign key (SSID) references semsec(SSID)
+);
+create table subject(
+subcode varchar(6),
+title varchar(15),
+sem number(1),
+credits number(1),
+primary key(subcode)
+);
+create table ciemarks(
+USN varchar(10),
+subcode varchar(6),
+SSID varchar(5),
+CIE1 number(2),
+CIE2 number(2),
+CIE3 number(2),
+FinalCIE number(2),
+primary key(USN, subcode, SSID),
+foreign key(USN) references student(USN),
+foreign key(subcode) references subject(subcode),
+foreign key(SSID) references semsec(SSID)
+);
+INSERT INTO student VALUES 
+('1DA15CS001','AJAY','TUMKUR', 9845091341,'M');
+INSERT INTO student VALUES 
+('1DA15CS091','CHITRA','DAVANGERE',7696772121,'F');
+DATABASE MANAGEMENT SYSTEM LAB PROGRAMS 14
+INSERT INTO student VALUES 
+('1DA15CS101','JEEVA','BELLARY', 9944850121,'M');
+INSERT INTO student VALUES 
+('1DA19CS045','AKASH','BENGALURU',9900211201,'M');
+INSERT INTO student VALUES 
+('1DA19CS088','BHASKAR','BENGALURU',9923211099,'M');
+INSERT INTO student VALUES 
+('1DA19CS122','ASMI','BENGALURU', 7894737377,'F');
+INSERT INTO student VALUES 
+('1DA19CS181','SANTOSH','MANGALURU',8812332201,'M');
+SELECT * FROM student;
+
+INSERT INTO semsec VALUES ('CSE8A', 8,'A');
+INSERT INTO semsec VALUES ('CSE8B', 8,'B');
+INSERT INTO semsec VALUES ('CSE8C', 8,'C');
+INSERT INTO semsec VALUES ('CSE4A', 4,'A');
+INSERT INTO semsec VALUES ('CSE4B', 4,'B');
+INSERT INTO semsec VALUES ('CSE4C', 4,'C');
+SELECT * FROM semsec;
+
+DATABASE MANAGEMENT SYSTEM LAB PROGRAMS 15
+INSERT INTO class VALUES ('1DA15CS001','CSE8A');
+INSERT INTO class VALUES ('1DA15CS091','CSE8B');
+INSERT INTO class VALUES ('1DA15CS101','CSE8C');
+INSERT INTO class VALUES ('1DA19CS045','CSE4A');
+INSERT INTO class VALUES ('1DA19CS088','CSE4B');
+INSERT INTO class VALUES ('1DA19CS122','CSE4C');
+INSERT INTO class VALUES ('1DA19CS181','CSE4C');
+SELECT * FROM class;
+
+INSERT INTO subject VALUES ('15CS81', 'ACA', 8, 4);
+INSERT INTO subject VALUES ('15CS82','SSM', 8, 4);
+INSERT INTO subject VALUES ('15CS83','CC', 8, 4);
+INSERT INTO subject VALUES ('15CS84','NM', 8, 3);
+INSERT INTO subject VALUES ('15CS41','M4', 4, 4);
+INSERT INTO subject VALUES ('15CS42','SE', 4, 4);
+INSERT INTO subject VALUES ('15CS43','MPMC', 4, 4);
+INSERT INTO subject VALUES ('15CS44','OOOPS', 4, 3);
+SELECT * FROM subject;
+
+INSERT INTO ciemarks (USN, subcode, SSID, CIE1, CIE2, CIE3) VALUES
+('1DA15CS101','15CS81','CSE8C', 15, 16, 18);
+INSERT INTO ciemarks (USN, subcode, SSID, CIE1, CIE2, CIE3) VALUES
+('1DA15CS101','15CS82','CSE8C', 12, 19, 14);
+INSERT INTO ciemarks (USN, subcode, SSID, CIE1, CIE2, CIE3) VALUES
+('1DA15CS101','15CS83','CSE8C', 19, 15, 20);
+INSERT INTO ciemarks (USN, subcode, SSID, CIE1, CIE2, CIE3) VALUES
+('1DA15CS101','15CS84','CSE8C', 20, 16, 19);
+SELECT * FROM ciemarks;
+
+1. List all the student details studying in fourth semester ‘C ’section.
+select s.*, ss.sem, ss.sec
+from student s, semsec ss, class c
+where s.USN = C.USN and ss.SSID = C.SSID
+and ss.sem = 4 and ss.sec = 'C';
+
+2. Compute the total number of male and female students in each semester and in each section.
+select ss.sem, ss.sec, s.gender, count(s.gender) as count
+from student s, semsec ss, class c
+where s.USN = C.USN and ss.SSID = C.SSID
+group by ss.sem, ss.sec, s.gender
+order by sem;
+
+3. Create a view of Test1 marks of student USN ‘1DA15CS101’ in all subjects. 
+create view stu_cie1_marks as
+select CIE1, subcode
+from ciemarks
+where USN = '1DA15CS101';
+
+Select * from stu_cie1_marks;
+
+4. Calculate the FinalCIE (average of best two test marks) and update the corresponding table for all students. 
+update ciemarks
+set FinalCIE = ((CIE1 + CIE2 + CIE3) - LEAST(CIE1, CIE2, CIE3))/2;
+
+select * from ciemarks;
+
+5. Categorize students based on the following criterion: 
+ If FinalCIE = 17 to 20 then CAT = ‘Outstanding’ 
+ If FinalCIE< 12 then CAT = ‘Weak’ 
+ If FinalCIE = 12 to 16 then CAT = ‘Average’ 
+Give these details only for 8th semester A, B, and C section students.
+
+select s.*,
+(case
+when m.FinalCIE between 17 and 20 then 'Outstanding'
+when m.FinalCIE between 12 and 16 then 'Average'
+else 'weak'
+end) as CAT
+from student s, semsec ss, ciemarks m, subject sub
+where s.USN = m.USN and ss.SSID = m.SSID and
+sub.subcode = m.subcode and sub.sem = 8;
